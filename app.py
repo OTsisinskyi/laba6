@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 
-
 DB_URI = "mysql+mysqlconnector://iotuser:iotuser@localhost/iot-test-db"
 
 app = Flask(__name__)
@@ -16,8 +15,8 @@ ma = Marshmallow(app)
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True)
-    producer = db.Column(db.String(100))
+    name = db.Column(db.String, unique=True)
+    producer = db.Column(db.String)
     weight_in_grams = db.Column(db.Integer)
     price = db.Column(db.Float)
 
@@ -39,12 +38,8 @@ products_schema = ProductSchema(many=True)
 
 @app.route('/product', methods=['POST'])
 def add_product():
-    name = request.json['name']
-    producer = request.json['producer']
-    weight_in_grams = request.json['weight_in_grams']
-    price = request.json['price']
-
-    new_product = Product(name, producer, weight_in_grams, price)
+    data = ProductSchema().load(request.json)
+    new_product = Product(**data)
 
     db.session.add(new_product)
     db.session.commit()
@@ -72,15 +67,9 @@ def update_product(id):
     if product is None:
         abort(404)
 
-    name = request.json['name']
-    producer = request.json['producer']
-    weight_in_grams = request.json['weight_in_grams']
-    price = request.json['price']
-
-    product.name = name
-    product.producer = producer
-    product.weight_in_grams = weight_in_grams
-    product.price = price
+    data = product_schema.load(request.json)
+    for i in data:
+        setattr(product, i, request.json[i])
 
     db.session.commit()
     return product_schema.jsonify(product)
